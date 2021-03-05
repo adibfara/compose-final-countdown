@@ -1,20 +1,23 @@
 package com.example.androiddevchallenge.finalcountdown
 
 import androidx.compose.foundation.Canvas
-import androidx.compose.foundation.gestures.*
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.fillMaxHeight
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.gestures.FlingBehavior
+import androidx.compose.foundation.gestures.Orientation
+import androidx.compose.foundation.gestures.ScrollScope
+import androidx.compose.foundation.gestures.scrollable
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.material.Button
 import androidx.compose.material.MaterialTheme
 import androidx.compose.material.Surface
 import androidx.compose.material.Text
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.geometry.center
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.DrawScope
@@ -22,6 +25,10 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import com.example.androiddevchallenge.ui.theme.MyTheme
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.isActive
+import java.text.DecimalFormat
 import kotlin.math.cos
 import kotlin.math.sin
 
@@ -30,7 +37,11 @@ import kotlin.math.sin
  */
 
 sealed class CountDownState {
-    data class Started(val remainingTime: Int) : CountDownState()
+    class InProgress(val totalAmount: Float, val startedAt: Long = System.currentTimeMillis()) :
+        CountDownState() {
+
+    }
+
     object NotStarted : CountDownState()
 }
 
@@ -38,26 +49,102 @@ sealed class CountDownState {
 fun FinalCountDown() {
     Surface {
         val timerValue = remember {
-            mutableStateOf(10)
+            mutableStateOf(0f)
         }
-        val timerState: MutableState<CountDownState.NotStarted> = remember {
+        val timerState: MutableState<CountDownState> = remember {
             mutableStateOf(CountDownState.NotStarted)
+        }
+
+        val value = timerState.value
+        if (value is CountDownState.InProgress) {
+            LaunchedEffect(timerState.value, block = {
+                while (isActive && timerValue.value > 0) {
+                    delay(1)
+                    timerValue.value =
+                        (((value.totalAmount) - (System.currentTimeMillis() - value.startedAt).toFloat() / 1000f).toFloat()).coerceAtLeast(
+                            0f
+                        )
+                    if (timerValue.value <= 0f) {
+                        timerState.value = CountDownState.NotStarted
+                    }
+                }
+
+            })
         }
         Box(
             Modifier
                 .fillMaxWidth()
                 .fillMaxHeight()
         ) {
-            TimerText(timerValue.value, timerState.value)
-            val second = remember { mutableStateOf(0) }
+
             TimerGauge(
                 0.5f,
-                currentValue = second.value,
-                onValueChanged = { second.value = it },
+                currentValue = timerValue.value,
+                onValueChanged = {
+                    if (timerState.value is CountDownState.NotStarted)
+                        timerValue.value = it
+                },
                 Modifier.fillMaxSize()
             )
 
+            TimerGUI(timerValue.value) {
+                ToggleButton(timerState.value) {
+                    if (timerState.value is CountDownState.NotStarted) {
+                        timerState.value = CountDownState.InProgress(timerValue.value)
+                    } else {
+                        timerState.value = CountDownState.NotStarted
+                        timerValue.value = 0f
+
+                    }
+                }
+
+            }
+
         }
+    }
+}
+
+@Composable
+private fun ToggleButton(
+    timerState: CountDownState,
+    onClick: () -> Unit
+) {
+    Button(onClick) {
+        val text = if (timerState is CountDownState.NotStarted) "START" else "STOP"
+        Text(text)
+    }
+}
+
+@Composable
+private fun TimerGUI(timerValue: Float, content: @Composable () -> Unit) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(16.dp)
+    ) {
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            Row {
+                val formatter = remember { DecimalFormat("00") }
+                val style = MaterialTheme.typography.h4
+                Text(
+                    text = formatter.format(timerValue / 60),
+                    style = style
+                )
+                Text(
+                    text = ":",
+                    style = style
+                )
+                Text(
+                    formatter.format(timerValue % 60),
+                    style = style
+                )
+            }
+            content()
+
+        }
+
+
     }
 }
 
@@ -65,65 +152,86 @@ fun FinalCountDown() {
 @Composable
 fun TimerGauge(
     diameterPercentage: Float,
-    currentValue: Int,
-    onValueChanged: (Int) -> Unit,
+    currentValue: Float,
+    onValueChanged: (Float) -> Unit,
     modifier: Modifier = Modifier,
     color: Color = MaterialTheme.colors.primary,
-    backgroundColor: Color = MaterialTheme.colors.secondary,
-    ticksColor: Color = MaterialTheme.colors.primaryVariant.copy(alpha = 0.5f)
+    backgroundColor: Color = MaterialTheme.colors.background,
+    secondaryBackgroundColor: Color = MaterialTheme.colors.secondaryVariant,
+    ticksColor: Color = MaterialTheme.colors.onBackground,
+    handleColor: Color = MaterialTheme.colors.secondary
 ) {
 
-    val scrollState = rememberScrollState()
-    onValueChanged(scrollState.value)
+    val scrollState = rememberScrollState(currentValue.toInt())
+    onValueChanged(scrollState.value.toFloat() / 200f)
     Canvas(
         modifier = modifier
-            .scrollable(scrollState, orientation = Orientation.Vertical),
+            .scrollable(
+                scrollState,
+                orientation = Orientation.Vertical,
+                flingBehavior = object : FlingBehavior {
+                    override suspend fun ScrollScope.performFling(initialVelocity: Float): Float {
+                        return initialVelocity
+                    }
+                }),
         onDraw = drawHalfCircle(
             currentValue.toFloat(),
             diameterPercentage,
             backgroundColor,
+            secondaryBackgroundColor,
             color,
-            ticksColor
+            ticksColor,
+            handleColor
         )
     )
 }
 
 @Composable
 private fun drawHalfCircle(
-    scrollAmount: Float,
+    seconds: Float,
     diameterPercentage: Float,
     backgroundColor: Color,
+    secondaryBackgroundColor: Color,
     color: Color,
-    ticksColor: Color
+    ticksColor: Color,
+    handleColor: Color,
 ): DrawScope.() -> Unit = {
     val radius = (size.height * diameterPercentage) / 2
     val offset = radius * 0.2f
     val center = size.center.copy(x = size.width + offset)
-    val topLeft = center.copy(center.x - radius, center.y - radius)
-    val size = Size(2 * radius, 2 * radius)
-    val strokeSize = 30.dp
+    val strokeSize = 10.dp
+    val topLeft = center.copy(
+        center.x - radius - (strokeSize.toPx() / 2),
+        center.y - radius - (strokeSize.toPx() / 2)
+    )
+    val size = Size((2 * radius) + (strokeSize.toPx()), (2 * radius) + (strokeSize.toPx()))
 
-    val ticksCount = 12
+    val ticksCount = 30
+    val secondsPerTick = 2
     val lineLength = 30.dp.toPx()
     val degree = 360 / ticksCount
 
-    val value = ((scrollAmount) / degree).toInt()
+    val value = seconds * (degree / secondsPerTick)
 
-    val initialRotation = value
-
-    val (o1, o2) = getTickPosition( 180.toInt(), center, radius, lineLength, lineLength + 8.dp.toPx())
+    val (o1, o2) = getTickPosition(
+        180f,
+        center,
+        radius,
+        lineLength,
+        lineLength + 8.dp.toPx()
+    )
     drawLine(
-        ticksColor,
+        handleColor,
         o1, o2,
         4.dp.toPx(),
         StrokeCap.Round,
 
-    )
-    0.rangeTo(ticksCount - 1).forEach {
-        val theta = 180 +  -initialRotation + it * degree
-        val (o1, o2) = getTickPosition( theta.toInt(), center, radius, lineLength, )
+        )
+    (0 until ticksCount).forEach {
+        val theta = 180 + -value + it * degree
+        val (o1, o2) = getTickPosition(theta, center, radius, lineLength)
         drawLine(
-         ticksColor,
+            ticksColor,
             o1, o2,
             2.dp.toPx(),
             StrokeCap.Round
@@ -136,15 +244,22 @@ private fun drawHalfCircle(
         false,
         topLeft,
         size,
-        style = gaugeStroke(strokeSize, StrokeCap.Butt)
+        style = gaugeStroke(strokeSize, StrokeCap.Round)
     )
-    /* drawCircle(Color.Black, radius,, style = Stroke(
-             10.dp.toPx(),
-         ))*/
+
+    drawCircle(
+        Brush.radialGradient(
+            listOf(
+                backgroundColor,
+                Color(0xFF04283D)
+            ),
+            center = center
+        ), radius, center
+    )
 }
 
 private fun getTickPosition(
-    theta: Int,
+    theta: Float,
     center: Offset,
     radius: Float,
     lineLength: Float,
@@ -169,8 +284,11 @@ fun TimerText(timerValue: Int, timerState: CountDownState, modifier: Modifier = 
     Text(timerValue.toString())
 }
 
-@Preview
+
 @Composable
+@Preview
 fun regularPreview() {
-    FinalCountDown()
+    MyTheme(darkTheme = true) {
+        FinalCountDown()
+    }
 }
