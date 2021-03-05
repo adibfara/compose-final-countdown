@@ -1,9 +1,7 @@
 package com.example.androiddevchallenge.finalcountdown
 
 import androidx.compose.foundation.Canvas
-import androidx.compose.foundation.gestures.FlingBehavior
 import androidx.compose.foundation.gestures.Orientation
-import androidx.compose.foundation.gestures.ScrollScope
 import androidx.compose.foundation.gestures.scrollable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -28,8 +26,11 @@ import androidx.compose.ui.unit.dp
 import com.example.androiddevchallenge.ui.theme.MyTheme
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
+import java.lang.Math.floor
 import java.text.DecimalFormat
 import kotlin.math.cos
+import kotlin.math.pow
+import kotlin.math.roundToInt
 import kotlin.math.sin
 
 /**
@@ -100,6 +101,7 @@ fun FinalCountDown() {
 
             }
 
+
         }
     }
 }
@@ -128,7 +130,7 @@ private fun TimerGUI(timerValue: Float, content: @Composable () -> Unit) {
                 val formatter = remember { DecimalFormat("00") }
                 val style = MaterialTheme.typography.h4
                 Text(
-                    text = formatter.format(timerValue / 60),
+                    text = formatter.format(floor(timerValue.toInt() / 60.0)),
                     style = style
                 )
                 Text(
@@ -136,7 +138,7 @@ private fun TimerGUI(timerValue: Float, content: @Composable () -> Unit) {
                     style = style
                 )
                 Text(
-                    formatter.format(timerValue % 60),
+                    formatter.format(timerValue.toInt() % 60),
                     style = style
                 )
             }
@@ -155,33 +157,29 @@ fun TimerGauge(
     currentValue: Float,
     onValueChanged: (Float) -> Unit,
     modifier: Modifier = Modifier,
-    color: Color = MaterialTheme.colors.primary,
-    backgroundColor: Color = MaterialTheme.colors.background,
-    secondaryBackgroundColor: Color = MaterialTheme.colors.secondaryVariant,
-    ticksColor: Color = MaterialTheme.colors.onBackground,
-    handleColor: Color = MaterialTheme.colors.secondary
 ) {
 
     val scrollState = rememberScrollState(currentValue.toInt())
+    /*if (scrollState.value > 200 * 60) {
+        LaunchedEffect(Unit, block = {
+            scrollState.scrollTo(200 * 60)
+        })
+    }*/
     onValueChanged(scrollState.value.toFloat() / 200f)
     Canvas(
         modifier = modifier
             .scrollable(
                 scrollState,
                 orientation = Orientation.Vertical,
-                flingBehavior = object : FlingBehavior {
-                    override suspend fun ScrollScope.performFling(initialVelocity: Float): Float {
-                        return initialVelocity
-                    }
-                }),
+            ),
         onDraw = drawHalfCircle(
-            currentValue.toFloat(),
+            currentValue,
             diameterPercentage,
-            backgroundColor,
-            secondaryBackgroundColor,
-            color,
-            ticksColor,
-            handleColor
+            MaterialTheme.colors.background,
+            MaterialTheme.colors.onBackground,
+            MaterialTheme.colors.secondary,
+            MaterialTheme.colors.primary,
+            MaterialTheme.colors.primaryVariant
         )
     )
 }
@@ -191,15 +189,15 @@ private fun drawHalfCircle(
     seconds: Float,
     diameterPercentage: Float,
     backgroundColor: Color,
-    secondaryBackgroundColor: Color,
-    color: Color,
     ticksColor: Color,
     handleColor: Color,
+    primaryColor: Color,
+    primaryVariant: Color,
 ): DrawScope.() -> Unit = {
     val radius = (size.height * diameterPercentage) / 2
     val offset = radius * 0.2f
     val center = size.center.copy(x = size.width + offset)
-    val strokeSize = 10.dp
+    val strokeSize = 20.dp
     val topLeft = center.copy(
         center.x - radius - (strokeSize.toPx() / 2),
         center.y - radius - (strokeSize.toPx() / 2)
@@ -207,11 +205,10 @@ private fun drawHalfCircle(
     val size = Size((2 * radius) + (strokeSize.toPx()), (2 * radius) + (strokeSize.toPx()))
 
     val ticksCount = 30
-    val secondsPerTick = 2
+    val secondsPerTick = 60 / ticksCount
     val lineLength = 30.dp.toPx()
     val degree = 360 / ticksCount
 
-    val value = seconds * (degree / secondsPerTick)
 
     val (o1, o2) = getTickPosition(
         180f,
@@ -227,25 +224,42 @@ private fun drawHalfCircle(
         StrokeCap.Round,
 
         )
-    (0 until ticksCount).forEach {
+    val addedTicks =
+        ((seconds / secondsPerTick).roundToInt() + (ticksCount / 4) + 1).coerceAtMost(ticksCount)
+    (0 until addedTicks).forEach {
+
+        val value = (seconds % 60) * (degree / secondsPerTick)
         val theta = 180 + -value + it * degree
         val (o1, o2) = getTickPosition(theta, center, radius, lineLength)
         drawLine(
             ticksColor,
-            o1, o2,
+            o1,
+            o2,
             2.dp.toPx(),
             StrokeCap.Round
         )
     }
-    drawArc(
-        color,
-        180f,
-        -value.toFloat(),
-        false,
-        topLeft,
-        size,
-        style = gaugeStroke(strokeSize, StrokeCap.Round)
-    )
+
+    val value = seconds * (degree / secondsPerTick)
+    val total = (seconds / 60).toInt()
+    0.rangeTo(total).forEach {
+        val sizeModifier = 0.5f.pow(it)
+        drawArc(
+            Brush.verticalGradient(
+                listOf(
+                    primaryColor.copy(alpha = 0.7f),
+                    primaryVariant.copy(alpha = 0.7f),
+                )
+            ),
+            180f,
+            if (it < total) -value else -value % 360,
+            false,
+            topLeft,
+            size,
+            style = gaugeStroke(strokeSize * sizeModifier, StrokeCap.Round)
+        )
+
+    }
 
     drawCircle(
         Brush.radialGradient(
