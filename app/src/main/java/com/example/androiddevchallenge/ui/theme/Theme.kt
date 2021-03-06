@@ -30,6 +30,7 @@ private val DarkColorPalette = darkColors(
     background = Color(0xff030407),
     onBackground = Color(0xff3F525F),
 
+
 )
 
 private val LightColorPalette = lightColors(
