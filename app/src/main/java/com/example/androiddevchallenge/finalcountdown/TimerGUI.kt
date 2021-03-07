@@ -1,6 +1,7 @@
 package com.example.androiddevchallenge.finalcountdown
 
 import androidx.compose.foundation.layout.*
+import androidx.compose.material.Button
 import androidx.compose.material.IconToggleButton
 import androidx.compose.material.MaterialTheme
 import androidx.compose.material.Text
@@ -59,6 +60,17 @@ fun TimerGUI(timerValue: Float, content: @Composable () -> Unit) {
 
         Footer()
 
+    }
+}
+
+@Composable
+fun ToggleButton(
+    timerState: CountDownState,
+    onClick: () -> Unit
+) {
+    Button(onClick) {
+        val text = if (timerState is CountDownState.NotStarted) "START" else "STOP"
+        Text(text)
     }
 }
 

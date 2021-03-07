@@ -7,15 +7,14 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.gestures.Orientation
 import androidx.compose.foundation.gestures.scrollable
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.material.Button
 import androidx.compose.material.MaterialTheme
-import androidx.compose.material.MaterialTheme.typography
 import androidx.compose.material.Surface
-import androidx.compose.material.Text
 import androidx.compose.runtime.*
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
@@ -32,8 +31,6 @@ import com.example.androiddevchallenge.ui.theme.MyTheme
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
-import java.lang.Math.floor
-import java.text.DecimalFormat
 import kotlin.math.cos
 import kotlin.math.pow
 import kotlin.math.roundToInt
@@ -58,24 +55,7 @@ fun FinalCountDown() {
             mutableStateOf(CountDownState.NotStarted)
         }
 
-        val value = countdownState.value
-        if (value is CountDownState.InProgress) {
-            LaunchedEffect(scrollState.value, block = {
-                while (isActive && scrollState.value > 0) {
-                    delay(1)
-                    scrollState.scrollTo(
-                        (200 * (((value.totalAmount) - (System.currentTimeMillis() - value.startedAt).toFloat() / 1000f)).coerceAtLeast(
-                            0f
-                        )).toInt().coerceAtLeast(0)
-                    )
-
-                    if (scrollState.value <= 0f) {
-                        countdownState.value = CountDownState.NotStarted
-                    }
-                }
-
-            })
-        }
+        UpdateCountdownStateByScroll(countdownState, scrollState)
         Box(
             Modifier
                 .fillMaxWidth()
@@ -111,18 +91,6 @@ fun FinalCountDown() {
         }
     }
 }
-
-@Composable
-private fun ToggleButton(
-    timerState: CountDownState,
-    onClick: () -> Unit
-) {
-    Button(onClick) {
-        val text = if (timerState is CountDownState.NotStarted) "START" else "STOP"
-        Text(text)
-    }
-}
-
 
 
 @Composable
