@@ -39,9 +39,6 @@ import kotlin.math.pow
 import kotlin.math.roundToInt
 import kotlin.math.sin
 
-/**
- * @author Adib Faramarzi (adibfara@gmail.com)
- */
 
 sealed class CountDownState {
     class InProgress(val totalAmount: Float, val startedAt: Long = System.currentTimeMillis()) :
@@ -60,12 +57,6 @@ fun FinalCountDown() {
         val countdownState: MutableState<CountDownState> = remember {
             mutableStateOf(CountDownState.NotStarted)
         }
-      /*  LaunchedEffect(scrollState.value, block = {
-            delay(300)
-            scrollState.scrollTo((scrollState.value / 200).toInt() * 200)
-
-        })*/
-
 
         val value = countdownState.value
         if (value is CountDownState.InProgress) {
@@ -132,72 +123,6 @@ private fun ToggleButton(
     }
 }
 
-@Composable
-private fun TimerGUI(timerValue: Float, content: @Composable () -> Unit) {
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(16.dp)
-    ) {
-        Text(
-            "Final Countdown",
-            style = typography.h5
-        )
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(start = 16.dp)
-        ) {
-            Column(horizontalAlignment = Alignment.Start, modifier = Modifier.widthIn(140.dp)) {
-
-                Row(verticalAlignment = Alignment.Bottom) {
-                    val formatter = remember { DecimalFormat("00") }
-                    val style = typography.h4
-                    Text(
-                        text = formatter.format(floor(timerValue.toInt() / 60.0)),
-                        style = style,
-
-                    )
-                    Text(
-                        text = ":",
-                        style = style
-                    )
-                    Text(
-                        formatter.format(timerValue.toInt() % 60),
-                        style = style
-                    )
-                    val milliseconds = ((timerValue - timerValue.toInt()) * 1000).toInt()
-                    Text(
-                        ".$milliseconds",
-                        style = typography.h5,
-                        modifier = Modifier.padding(bottom = 3.dp)
-                    )
-                }
-                content()
-            }
-        }
-
-
-        Row(
-            verticalAlignment = Alignment.Bottom, modifier = Modifier
-                .fillMaxSize()
-                .padding(16.dp)
-        ) {
-            Column {
-                Text(
-                    text = "Made with ❤ by Adib Faramarzi",
-                    style = typography.body2,
-                )
-                Text(
-                    text = "https://github.com/adibfara/compose-final-countdown",
-                    style = typography.caption
-                )
-            }
-        }
-
-    }
-}
 
 
 @Composable
@@ -287,14 +212,18 @@ private fun ClockBackground(
     second: Float,
     state: CountDownState
 ) {
-    val secondaryColor = animateColorAsState(targetValue = when {
-        state is CountDownState.NotStarted || second % 1 > 0.2f -> MaterialTheme.colors.secondaryVariant
-        else -> MaterialTheme.colors.secondary
-    }).value
-    val radiusModifier = animateFloatAsState(targetValue = when {
-        state is CountDownState.NotStarted || second % 1 > 0.2f -> 1f
-        else -> 1.05f
-    }).value
+    val secondaryColor = animateColorAsState(
+        targetValue = when {
+            state is CountDownState.NotStarted || second % 1 > 0.2f -> MaterialTheme.colors.secondaryVariant
+            else -> MaterialTheme.colors.secondary
+        }
+    ).value
+    val radiusModifier = animateFloatAsState(
+        targetValue = when {
+            state is CountDownState.NotStarted || second % 1 > 0.2f -> 1f
+            else -> 1.05f
+        }
+    ).value
 
     val backgroundColor = MaterialTheme.colors.background
 
@@ -327,9 +256,9 @@ private fun TimerHandles(
 ) {
     val lineLengthState = remember { mutableStateOf(24.dp) }
     LaunchedEffect(key1 = seconds, block = {
-        lineLengthState.value = 32.dp
+        lineLengthState.value = 28.dp
         delay(300)
-        lineLengthState.value = 24.dp
+        lineLengthState.value = 20.dp
     })
 
     val lineLength = animateDpAsState(targetValue = lineLengthState.value).value
@@ -363,8 +292,10 @@ private fun TimerHandles(
                 ((seconds / secondsPerTick).roundToInt() + (ticksCount / 4) + 1).coerceAtMost(
                     ticksCount
                 )
+            val highlightedTicksCount = seconds / secondsPerTick.toFloat()
             (0 until addedTicks).forEach {
-
+                val distanceUntilHighlighted =
+                    ((it.toFloat() - highlightedTicksCount) * -1).coerceIn(0f, 1f) * 2 + 1
                 val value = (seconds % 60) * (degree / secondsPerTick)
                 val theta = 180 + -value + it * degree
                 val (tickStart, tickEnd) = getTickPosition(theta, center, radius, lineLength.toPx())
@@ -372,7 +303,7 @@ private fun TimerHandles(
                     ticksColor,
                     tickStart,
                     tickEnd,
-                    2.dp.toPx(),
+                    2.dp.toPx() * distanceUntilHighlighted,
                     StrokeCap.Round
                 )
             }
@@ -419,6 +350,10 @@ private fun getTickPosition(
 private fun DrawScope.gaugeStroke(strokeSize: Dp, cap: StrokeCap) = Stroke(
     strokeSize.toPx(), cap = cap
 )
+
+
+
+
 
 
 @Composable

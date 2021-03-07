@@ -23,13 +23,16 @@ import androidx.compose.material.Surface
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.tooling.preview.Preview
 import com.example.androiddevchallenge.finalcountdown.FinalCountDown
+import com.example.androiddevchallenge.finalcountdown.LocalThemeComposition
+import com.example.androiddevchallenge.finalcountdown.Theme
 import com.example.androiddevchallenge.ui.theme.MyTheme
 
 class MainActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {
-            MyTheme(darkTheme = true) {
+
+            MyTheme(darkTheme = LocalThemeComposition.current.value == Theme.Night) {
                 MyApp()
             }
         }
