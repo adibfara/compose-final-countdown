@@ -1,3 +1,18 @@
+/*
+ * Copyright 2021 The Android Open Source Project
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     https://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package com.example.androiddevchallenge.finalcountdown
 
 import androidx.compose.animation.animateColorAsState
@@ -14,7 +29,12 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material.MaterialTheme
 import androidx.compose.material.Surface
-import androidx.compose.runtime.*
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.MutableState
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
@@ -29,19 +49,15 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.example.androiddevchallenge.ui.theme.MyTheme
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlin.math.cos
 import kotlin.math.pow
 import kotlin.math.roundToInt
 import kotlin.math.sin
 
-
 sealed class CountDownState {
     class InProgress(val totalAmount: Float, val startedAt: Long = System.currentTimeMillis()) :
-        CountDownState() {
-
-    }
+        CountDownState()
 
     object NotStarted : CountDownState()
 }
@@ -81,17 +97,12 @@ fun FinalCountDown() {
                         coroutineScope.launch {
                             scrollState.animateScrollTo(0)
                         }
-
                     }
                 }
-
             }
-
-
         }
     }
 }
-
 
 @Composable
 fun TimerGauge(
@@ -99,7 +110,7 @@ fun TimerGauge(
     diameterPercentage: Float,
     currentValue: Float,
     modifier: Modifier = Modifier,
-    countdownState: CountDownState
+    countdownState: CountDownState,
 ) {
     val seconds: Float = currentValue
     val ticksColor: Color = MaterialTheme.colors.onBackground
@@ -128,7 +139,7 @@ private fun TimerLine(
     diameterPercentage: Float,
     seconds: Float,
     primaryColor: Color,
-    primaryVariant: Color
+    primaryVariant: Color,
 ) {
     Canvas(
         modifier = modifier
@@ -167,7 +178,6 @@ private fun TimerLine(
                     size,
                     style = gaugeStroke(strokeSize * sizeModifier, StrokeCap.Round)
                 )
-
             }
         }
     )
@@ -178,7 +188,7 @@ private fun ClockBackground(
     modifier: Modifier,
     diameterPercentage: Float,
     second: Float,
-    state: CountDownState
+    state: CountDownState,
 ) {
     val secondaryColor = animateColorAsState(
         targetValue = when {
@@ -208,7 +218,8 @@ private fun ClockBackground(
                         secondaryColor
                     ),
                     center = center
-                ), radius, center
+                ),
+                radius, center
             )
         }
     )
@@ -220,14 +231,17 @@ private fun TimerHandles(
     diameterPercentage: Float,
     handleColor: Color,
     seconds: Float,
-    ticksColor: Color
+    ticksColor: Color,
 ) {
     val lineLengthState = remember { mutableStateOf(24.dp) }
-    LaunchedEffect(key1 = seconds, block = {
-        lineLengthState.value = 28.dp
-        delay(300)
-        lineLengthState.value = 20.dp
-    })
+    LaunchedEffect(
+        key1 = seconds,
+        block = {
+            lineLengthState.value = 28.dp
+            delay(300)
+            lineLengthState.value = 20.dp
+        }
+    )
 
     val lineLength = animateDpAsState(targetValue = lineLengthState.value).value
 
@@ -241,7 +255,6 @@ private fun TimerHandles(
             val ticksCount = ticksCount()
             val secondsPerTick = 60 / ticksCount
             val degree = 360 / ticksCount
-
 
             val (lineStart, lineEnd) = getTickPosition(
                 180f,
@@ -279,13 +292,12 @@ private fun TimerHandles(
     )
 }
 
-
 private fun ticksCount() = 30
 
 private fun DrawScope.getClockTopLeft(
     center: Offset,
     radius: Float,
-    strokeSize: Dp
+    strokeSize: Dp,
 ) = center.copy(
     center.x - radius - (strokeSize.toPx() / 2),
     center.y - radius - (strokeSize.toPx() / 2)
@@ -318,11 +330,6 @@ private fun getTickPosition(
 private fun DrawScope.gaugeStroke(strokeSize: Dp, cap: StrokeCap) = Stroke(
     strokeSize.toPx(), cap = cap
 )
-
-
-
-
-
 
 @Composable
 @Preview
